@@ -10,6 +10,10 @@
 - System Accessibility Preferences
 - UIKit Accessibility Patterns
 - Common Mistakes Checklist
+- Voice Control Patterns
+- Switch Control Patterns
+- Full Keyboard Access Patterns
+- Automated Accessibility Testing
 
 ## Labels, Values, and Hints
 
@@ -138,3 +142,256 @@ UIAccessibility.post(notification: .screenChanged, argument: newScreenView)
 - Ignoring Reduce Motion, Reduce Transparency, or Increase Contrast
 - Fixed font sizes that break Dynamic Type
 - Tap targets smaller than 44x44 points
+
+## Voice Control Patterns
+
+Voice Control generates tap targets from accessibility labels. Labels must be speakable and unique within the visible screen.
+
+### accessibilityInputLabels (iOS 14+)
+
+Provide shorter spoken alternatives when the primary label is long:
+
+```swift
+// Primary label is descriptive but long to speak
+Button(action: { startWorkout() }) {
+    VStack {
+        Image(systemName: "figure.run")
+        Text("Start Outdoor Running Workout")
+    }
+}
+.accessibilityLabel("Start Outdoor Running Workout")
+.accessibilityInputLabels(["Start Run", "Run", "Start Workout"])
+```
+
+```swift
+// Navigation link with verbose label
+NavigationLink {
+    AccountSettingsView()
+} label: {
+    Label("Account and Privacy Settings", systemImage: "person.circle")
+}
+.accessibilityInputLabels(["Account", "Settings", "Privacy"])
+```
+
+### Speakable Label Guidelines
+
+```swift
+// Bad: emoji-only, unspeakable
+Button("❤️") { toggleFavorite() }
+
+// Good: speakable label
+Button(action: { toggleFavorite() }) {
+    Image(systemName: "heart.fill")
+}
+.accessibilityLabel("Favorite")
+
+// Bad: duplicate labels on same screen
+ForEach(items) { item in
+    Button("Edit") { edit(item) }  // Voice Control can't distinguish
+}
+
+// Good: unique labels
+ForEach(items) { item in
+    Button("Edit") { edit(item) }
+        .accessibilityLabel("Edit \(item.name)")
+}
+```
+
+## Switch Control Patterns
+
+Switch Control scans elements sequentially. Reduce scan stops with grouping and provide custom actions for gesture-based interactions.
+
+### Custom Actions for Gesture Alternatives
+
+```swift
+// Swipe-to-delete row: Switch Control can't swipe
+TaskRow(task: task)
+    .accessibilityAction(named: "Complete") { completeTask(task) }
+    .accessibilityAction(named: "Delete") { deleteTask(task) }
+    .accessibilityAction(named: "Reschedule") { rescheduleTask(task) }
+```
+
+```swift
+// Long-press context menu: expose actions directly
+PhotoThumbnail(photo: photo)
+    .contextMenu { /* ... */ }
+    .accessibilityAction(named: "Share") { sharePhoto(photo) }
+    .accessibilityAction(named: "Add to Album") { addToAlbum(photo) }
+    .accessibilityAction(named: "Delete") { deletePhoto(photo) }
+```
+
+### Grouping for Scan Efficiency
+
+```swift
+// Bad: 5 scan stops per row
+HStack {
+    Image(systemName: "doc")
+    VStack {
+        Text(document.title)
+        Text(document.date.formatted())
+    }
+    Spacer()
+    Text(document.size)
+    Image(systemName: "chevron.right")
+}
+
+// Good: 1 scan stop per row
+HStack {
+    Image(systemName: "doc")
+    VStack {
+        Text(document.title)
+        Text(document.date.formatted())
+    }
+    Spacer()
+    Text(document.size)
+    Image(systemName: "chevron.right")
+}
+.accessibilityElement(children: .combine)
+```
+
+## Full Keyboard Access Patterns
+
+Full Keyboard Access (iOS 15+) uses Tab/Shift-Tab for navigation, Space/Enter for activation, and arrow keys for directional movement.
+
+### Making Custom Views Focusable (iOS 17+)
+
+```swift
+struct SelectableCard: View {
+    let title: String
+    let action: () -> Void
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 12)
+            .fill(isFocused ? Color.accentColor.opacity(0.1) : Color.clear)
+            .overlay {
+                Text(title)
+            }
+            .focusable()
+            .focused($isFocused)
+            .onKeyPress(.return) {
+                action()
+                return .handled
+            }
+    }
+}
+```
+
+### FocusInteractions (iOS 17+)
+
+Control which focus interactions a view supports:
+
+```swift
+// Tap-equivalent only (no text editing)
+CustomButton(title: "Play")
+    .focusable(interactions: .activate)
+
+// Text input only
+CustomInputField()
+    .focusable(interactions: .edit)
+
+// Both activation and editing
+SearchBar()
+    .focusable(interactions: [.activate, .edit])
+```
+
+### Keyboard Shortcuts
+
+```swift
+Button("New Document") { createDocument() }
+    .keyboardShortcut("n", modifiers: .command)
+
+Button("Find") { showSearch() }
+    .keyboardShortcut("f", modifiers: .command)
+
+// Delete with confirmation
+Button("Delete", role: .destructive) { confirmDelete() }
+    .keyboardShortcut(.delete, modifiers: .command)
+```
+
+### Focus State for Multi-Field Navigation
+
+```swift
+enum Field: Hashable {
+    case username, password, confirmPassword
+}
+
+struct SignupForm: View {
+    @FocusState private var focusedField: Field?
+
+    var body: some View {
+        Form {
+            TextField("Username", text: $username)
+                .focused($focusedField, equals: .username)
+            SecureField("Password", text: $password)
+                .focused($focusedField, equals: .password)
+            SecureField("Confirm", text: $confirm)
+                .focused($focusedField, equals: .confirmPassword)
+        }
+        .onSubmit {
+            switch focusedField {
+            case .username: focusedField = .password
+            case .password: focusedField = .confirmPassword
+            case .confirmPassword: submit()
+            case nil: break
+            }
+        }
+    }
+}
+```
+
+## Automated Accessibility Testing
+
+Use `XCUIElement` attributes to verify accessibility properties in UI tests.
+
+### Verifying Labels and Identifiers
+
+```swift
+func testAccessibilityLabels() throws {
+    let app = XCUIApplication()
+    app.launch()
+
+    // Verify buttons have meaningful labels
+    let settingsButton = app.buttons["Settings"]
+    XCTAssertTrue(settingsButton.exists, "Settings button must exist")
+    XCTAssertTrue(settingsButton.isEnabled, "Settings button must be enabled")
+
+    // Verify a cell groups content correctly
+    let productCell = app.cells.element(boundBy: 0)
+    XCTAssertFalse(productCell.label.isEmpty, "Product cell must have a combined label")
+}
+```
+
+### Testing Focus and Selection State
+
+```swift
+func testTabNavigationOrder() throws {
+    let app = XCUIApplication()
+    app.launch()
+
+    let usernameField = app.textFields["Username"]
+    let passwordField = app.secureTextFields["Password"]
+
+    usernameField.tap()
+    XCTAssertTrue(usernameField.hasFocus)
+
+    // Tab to next field
+    usernameField.typeText("\t")
+    XCTAssertTrue(passwordField.hasFocus)
+}
+```
+
+### Testing Custom Actions
+
+```swift
+func testSwipeToDeleteAlternative() throws {
+    let app = XCUIApplication()
+    app.launch()
+
+    let cell = app.cells["task-buy-groceries"]
+    XCTAssertTrue(cell.exists)
+
+    // Verify accessibility identifier is set for test targeting
+    XCTAssertEqual(cell.identifier, "task-buy-groceries")
+}
+```

@@ -18,6 +18,23 @@ Comprehensive reference for locale-aware formatting in iOS 15+ using `FormatStyl
 - [Layout Testing with Accessibility Inspector](#layout-testing-with-accessibility-inspector)
 - [Quick Reference Table](#quick-reference-table)
 
+## Migration from Legacy Formatters
+
+`FormatStyle` (iOS 15+) replaces the older `Formatter` subclasses. If you encounter legacy code, migrate to `FormatStyle`:
+
+| Legacy | Modern replacement |
+|--------|-------------------|
+| `DateFormatter` | `.formatted(.dateTime...)` or `Date.FormatStyle` |
+| `NumberFormatter` | `.formatted(.number...)` or `IntegerFormatStyle` / `FloatingPointFormatStyle` |
+| `DateComponentsFormatter` | `Duration.formatted(.units(...))` or `.time(pattern:)` |
+| `MeasurementFormatter` | `Measurement.formatted(.measurement(...))` |
+| `DateIntervalFormatter` | `(start..<end).formatted(date:time:)` |
+| `PersonNameComponentsFormatter` | `.formatted(.name(style:))` |
+| `ByteCountFormatter` | `.formatted(.byteCount(style:))` |
+| `ListFormatter` | `.formatted(.list(type:))` |
+
+`FormatStyle` is value-type, `Sendable`, composable, and works directly in SwiftUI `Text` views. The legacy formatters are reference types that require manual locale and calendar configuration.
+
 ## Date Formatting
 
 ### Preset date and time styles

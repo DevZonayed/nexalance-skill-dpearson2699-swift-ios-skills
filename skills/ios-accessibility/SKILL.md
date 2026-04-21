@@ -1,6 +1,6 @@
 ---
 name: ios-accessibility
-description: "Implement, review, or improve accessibility in iOS/macOS apps with SwiftUI and UIKit. Use when adding VoiceOver support with accessibility labels, hints, values, and traits; when grouping or reordering accessibility elements; when managing focus with @AccessibilityFocusState; when supporting Dynamic Type with @ScaledMetric; when building custom rotors or accessibility actions; when auditing a11y compliance; or when adapting UI for assistive technologies and system accessibility preferences."
+description: "Implement, review, or improve accessibility in iOS/macOS apps with SwiftUI and UIKit. Use when adding VoiceOver, Voice Control, Switch Control, or Full Keyboard Access support; when working with accessibility labels, hints, values, traits, or accessibilityInputLabels; when grouping or reordering accessibility elements; when managing focus with @AccessibilityFocusState or .focusable(); when supporting Dynamic Type with @ScaledMetric; when building custom rotors or accessibility actions; when writing automated accessibility tests with XCTest; when auditing a11y compliance; or when adapting UI for assistive technologies and system accessibility preferences."
 ---
 
 # iOS Accessibility — SwiftUI and UIKit
@@ -17,6 +17,9 @@ Every user-facing view must be usable with VoiceOver, Switch Control, Voice Cont
 - [Custom Rotors](#custom-rotors)
 - [System Accessibility Preferences](#system-accessibility-preferences)
 - [Decorative Content](#decorative-content)
+- [Voice Control](#voice-control)
+- [Switch Control](#switch-control)
+- [Full Keyboard Access](#full-keyboard-access)
 - [Assistive Access (iOS 18+)](#assistive-access-ios-18)
 - [UIKit Accessibility Patterns](#uikit-accessibility-patterns)
 - [Accessibility Custom Content](#accessibility-custom-content)
@@ -196,6 +199,40 @@ Button(action: { }) {
 .accessibilityLabel("Settings")
 ```
 
+## Voice Control
+
+Voice Control relies on accessibility labels to generate spoken tap targets. If a label is missing or unspeakable, Voice Control cannot target the element.
+
+- Every interactive element MUST have a speakable accessibility label (no emoji-only, no symbol-only).
+- Labels must be unique within the visible screen — duplicate labels force users to disambiguate with overlay numbers.
+- When the primary label is long or awkward to speak, provide shorter alternatives with `accessibilityInputLabels` (iOS 14+). Voice Control and Full Keyboard Access use these. List alternatives in descending order of importance.
+- Test with Voice Control enabled: say "Show Names" and "Show Numbers" to verify all interactive elements are targetable.
+
+See [references/a11y-patterns.md](references/a11y-patterns.md) for `accessibilityInputLabels` examples and speakable label guidelines.
+
+## Switch Control
+
+Switch Control scans accessibility elements sequentially in reading order. Proper grouping and custom actions are critical for usability.
+
+- Group related content with `.accessibilityElement(children: .combine)` to reduce scan stops.
+- Every scan target should be meaningful and actionable. Decorative elements hidden from VoiceOver are also hidden from Switch Control.
+- Switch Control users cannot perform swipe-to-delete, long-press, or multi-finger gestures. Expose these interactions as `.accessibilityAction(named:)` custom actions instead — Switch Control presents them as a menu.
+- Custom controls with non-standard hit areas should ensure `accessibilityFrame` accurately reflects the tappable region (for point scanning mode).
+
+See [references/a11y-patterns.md](references/a11y-patterns.md) for custom action and grouping examples.
+
+## Full Keyboard Access
+
+Full Keyboard Access (iOS 15+) provides Tab/Shift-Tab navigation, arrow keys, Space/Enter activation, and Escape for dismissal. Standard SwiftUI controls are focusable by default.
+
+- Tab order follows the accessibility element order.
+- Use `.focusable()` (iOS 17+) to make custom views participate in the focus system. The `focusable(_:interactions:)` variant controls whether the view supports `.activate`, `.edit`, or both.
+- Use `@FocusState` to track and programmatically move keyboard focus.
+- Add `.keyboardShortcut()` to frequently used actions. Do not override system-defined shortcuts (Cmd+C, Cmd+V, Cmd+Tab, etc.).
+- The system draws a focus ring automatically. Use `@FocusState` + `.focused($isFocused)` if a custom view needs to adjust its appearance when focused.
+
+See [references/a11y-patterns.md](references/a11y-patterns.md) for `.focusable()`, `FocusInteractions`, keyboard shortcut, and multi-field focus examples.
+
 ## Assistive Access (iOS 18+)
 
 Assistive Access provides a simplified interface for users with cognitive disabilities. Apps should support this mode:
@@ -257,9 +294,58 @@ ProductRow(product: product)
 
 ## Testing Accessibility
 
+### Manual Testing
+
 - **Accessibility Inspector** (Xcode > Open Developer Tool): Audit views for missing labels, traits, and contrast issues. Run audits against the Simulator or connected device.
 - **VoiceOver testing**: Enable in Settings > Accessibility > VoiceOver. Navigate every screen with swipe gestures.
+- **Voice Control testing**: Enable in Settings > Accessibility > Voice Control. Say "Show Names" and "Show Numbers" to verify all elements are targetable.
+- **Full Keyboard Access testing**: Enable in Settings > Accessibility > Keyboards > Full Keyboard Access. Tab through every screen and verify all interactive elements receive focus.
+- **Switch Control testing**: Enable in Settings > Accessibility > Switch Control. Verify scan order is logical and custom actions appear for gesture-based interactions.
 - **Dynamic Type**: Test with all text sizes in Settings > Accessibility > Display & Text Size > Larger Text.
+
+### Automated Testing with XCTest
+
+Use `XCUIElement` accessibility attributes to write UI tests that verify accessibility properties:
+
+```swift
+func testProductRowAccessibility() throws {
+    let app = XCUIApplication()
+    app.launch()
+
+    let productCell = app.cells["product-organic-apples"]
+    XCTAssertTrue(productCell.exists)
+    XCTAssertTrue(productCell.isEnabled)
+
+    // Verify the label is set and meaningful
+    XCTAssertFalse(productCell.label.isEmpty)
+
+    // Verify a specific element has the expected label
+    let favoriteButton = productCell.buttons["Favorite"]
+    XCTAssertTrue(favoriteButton.exists)
+    XCTAssertTrue(favoriteButton.isEnabled)
+}
+```
+
+Key `XCUIElementAttributes` properties for accessibility verification: `label`, `identifier`, `value`, `isEnabled`, `hasFocus`, `isSelected`, `placeholderValue`, `title`.
+
+Test dismissal focus restoration:
+
+```swift
+func testSheetDismissReturnsFocus() throws {
+    let app = XCUIApplication()
+    app.launch()
+
+    let triggerButton = app.buttons["Open Settings"]
+    triggerButton.tap()
+
+    // Dismiss the sheet
+    let doneButton = app.buttons["Done"]
+    doneButton.tap()
+
+    // Verify focus returns to trigger (in accessibility-focused testing)
+    XCTAssertTrue(triggerButton.hasFocus)
+}
+```
 
 ## Common Mistakes
 
@@ -294,6 +380,11 @@ For every user-facing view, verify:
 - [ ] Icon-only buttons have labels
 - [ ] Heading traits set on section headers
 - [ ] Custom accessibility types and notification payloads are `Sendable` when passed across concurrency boundaries
+- [ ] Labels are speakable and unique for Voice Control (no emoji-only or duplicate labels on screen)
+- [ ] `accessibilityInputLabels` provided for elements with long or awkward primary labels
+- [ ] Gesture-based interactions (swipe-to-delete, long-press) have accessibility custom action equivalents for Switch Control
+- [ ] Custom views use `.focusable()` when they should participate in Full Keyboard Access navigation
+- [ ] System keyboard shortcuts are not overridden
 
 ## References
 
