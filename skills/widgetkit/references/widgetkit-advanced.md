@@ -20,6 +20,7 @@
 - [ActivityStyle](#activitystyle)
 - [Dismissal Policies](#dismissal-policies)
 - [Querying Active Widgets and Activities](#querying-active-widgets-and-activities)
+- [Design Patterns](#design-patterns)
 - [Apple Documentation Links](#apple-documentation-links)
 
 ## Timeline Strategies
@@ -854,6 +855,104 @@ Task {
     }
 }
 ```
+
+## Design Patterns
+
+### Prefer Gauge for Value Indicators
+
+Use `Gauge` (iOS 16+) instead of manual `Circle` or `Path` arcs to show a value
+within a range. The system handles styling, accessibility, and rendering-mode
+adaptation automatically.
+
+- `.accessoryCircular` — open ring with center value label, matches the system
+  complication style. Use for `accessoryCircular` Lock Screen widgets.
+- `.linearCapacity` — horizontal bar that fills leading to trailing. Use for
+  home screen widgets when a capacity bar fits.
+
+```swift
+// accessoryCircular Lock Screen widget
+struct StepsCircularView: View {
+    let entry: StepsEntry
+
+    var body: some View {
+        Gauge(value: Double(entry.stepCount), in: 0...10000) {
+            Image(systemName: "figure.walk")
+        } currentValueLabel: {
+            Text("\(entry.stepCount)")
+        }
+        .gaugeStyle(.accessoryCircular)
+    }
+}
+
+// Home screen capacity bar
+Gauge(value: storageUsed, in: 0...storageTotal) {
+    Text("Storage")
+} currentValueLabel: {
+    Text(storageUsed, format: .byteCount(style: .file))
+}
+.gaugeStyle(.linearCapacity)
+```
+
+### Use containerBackground for Widget Backgrounds
+
+`.containerBackground(_:for: .widget)` (iOS 17+) is the designated way to set
+widget backgrounds. Replaces older padding and background patterns. The system
+uses this placement to correctly render backgrounds across all widget surfaces.
+
+```swift
+struct OrderWidgetView: View {
+    let entry: OrderEntry
+
+    var body: some View {
+        VStack(alignment: .leading) {
+            Text(entry.orderName).font(.headline)
+            Text(entry.status).foregroundStyle(.secondary)
+        }
+        .containerBackground(.fill.tertiary, for: .widget)
+    }
+}
+```
+
+### Use Canvas for Dense Visualizations
+
+Use `Canvas` for sparklines, mini bar charts, or heat maps inside widgets. The
+lack of per-element accessibility is acceptable since the entire widget surface
+is a single tap target.
+
+```swift
+struct SparklineView: View {
+    let values: [Double]
+
+    var body: some View {
+        Canvas { context, size in
+            guard values.count > 1 else { return }
+            let maxVal = values.max() ?? 1
+            let step = size.width / CGFloat(values.count - 1)
+            var path = Path()
+            for (i, value) in values.enumerated() {
+                let x = step * CGFloat(i)
+                let y = size.height * (1 - value / maxVal)
+                if i == 0 { path.move(to: CGPoint(x: x, y: y)) }
+                else { path.addLine(to: CGPoint(x: x, y: y)) }
+            }
+            context.stroke(path, with: .color(.blue), lineWidth: 2)
+        }
+    }
+}
+```
+
+### Match Timeline Refresh to Data Granularity
+
+Apple budgets
+[40–70 refreshes per day](https://sosumi.ai/documentation/widgetkit/keeping-a-widget-up-to-date)
+for frequently viewed widgets, with entries at least 5 minutes apart. Align
+reload cadence to how often the underlying data actually changes.
+
+- Generate entries for as many future dates as possible to reduce reload requests.
+- Use `.after(date)` when data updates on a known schedule (market hours, transit).
+- Use `.never` when data only changes from user action.
+- Use `Text(timerInterval:countsDown:)` for live countdowns instead of burning
+  timeline entries on every tick.
 
 ## Apple Documentation Links
 

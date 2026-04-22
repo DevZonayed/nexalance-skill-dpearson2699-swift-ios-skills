@@ -24,6 +24,7 @@ updates, Xcode setup, and advanced patterns.
 - [Control Center Widgets (iOS 18+)](#control-center-widgets-ios-18)
 - [Lock Screen Widgets](#lock-screen-widgets)
 - [StandBy Mode](#standby-mode)
+- [Design Patterns](#design-patterns)
 - [iOS 26 Additions](#ios-26-additions)
 - [Common Mistakes](#common-mistakes)
 - [Review Checklist](#review-checklist)
@@ -182,19 +183,12 @@ struct CategoryProvider: AppIntentTimelineProvider {
 
 ## Widget Families
 
-### System Families (Home Screen)
-
 | Family | Platform |
 |---|---|
 | `.systemSmall` | iOS, iPadOS, macOS, CarPlay (iOS 26+) |
 | `.systemMedium` | iOS, iPadOS, macOS |
 | `.systemLarge` | iOS, iPadOS, macOS |
 | `.systemExtraLarge` | iPadOS only |
-
-### Accessory Families (Lock Screen / watchOS)
-
-| Family | Platform |
-|---|---|
 | `.accessoryCircular` | iOS, watchOS |
 | `.accessoryRectangular` | iOS, watchOS |
 | `.accessoryInline` | iOS, watchOS |
@@ -327,7 +321,6 @@ struct DeliveryActivityWidget: Widget {
 ### Starting, Updating, and Ending
 
 ```swift
-// Start
 let attributes = DeliveryAttributes(orderNumber: 123, restaurantName: "Pizza Place")
 let state = DeliveryAttributes.ContentState(
     driverName: "Alex",
@@ -337,14 +330,9 @@ let state = DeliveryAttributes.ContentState(
 let content = ActivityContent(state: state, staleDate: nil, relevanceScore: 75)
 let activity = try Activity.request(attributes: attributes, content: content, pushType: .token)
 
-// Update (optionally with alert)
 let updated = ActivityContent(state: newState, staleDate: nil, relevanceScore: 90)
 await activity.update(updated)
-await activity.update(updated, alertConfiguration: AlertConfiguration(
-    title: "Order Update", body: "Your driver is nearby!", sound: .default
-))
 
-// End
 let final = ActivityContent(state: finalState, staleDate: nil, relevanceScore: 0)
 await activity.end(final, dismissalPolicy: .after(.now.addingTimeInterval(3600)))
 ```
@@ -408,6 +396,24 @@ landscape). Use `@Environment(\.widgetLocation)` for conditional rendering:
 @Environment(\.widgetLocation) var location
 // location == .standBy, .homeScreen, .lockScreen, .carPlay, etc.
 ```
+
+## Design Patterns
+
+- **Prefer `Gauge` over manual arcs.** Use `.gaugeStyle(.accessoryCircular)` for
+  Lock Screen circular widgets and `.linearCapacity` for home screen capacity bars.
+  The system handles styling, accessibility, and rendering-mode adaptation.
+- **Use `.containerBackground(_:for: .widget)`** (iOS 17+) for widget backgrounds
+  instead of padding and background modifiers.
+- **Use `Canvas` for dense visualizations** like sparklines or mini bar charts.
+  The lack of per-element accessibility is acceptable since the entire widget
+  surface is a single tap target.
+- **Match timeline refresh to data granularity.** Apple budgets
+  [40–70 refreshes per day](https://sosumi.ai/documentation/widgetkit/keeping-a-widget-up-to-date)
+  with entries at least 5 minutes apart. Use `Text(timerInterval:countsDown:)`
+  for live countdowns instead of burning timeline entries.
+
+See [references/widgetkit-advanced.md](references/widgetkit-advanced.md) for
+code examples and detailed guidance on each pattern.
 
 ## iOS 26 Additions
 
