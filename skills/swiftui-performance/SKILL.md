@@ -197,53 +197,20 @@ Provide:
 
 ## Instruments Profiling
 
-### SwiftUI Instrument Template
+Use the **SwiftUI instrument template** in Xcode (Cmd+I to profile). Key instruments: SwiftUI View Body (body evaluation counts), SwiftUI View Properties (state change tracking), Time Profiler, and Hangs.
 
-Instruments ships with a dedicated **SwiftUI** template (available in Xcode 15+ / Instruments 15+). This template provides:
-
-- **SwiftUI View Body** instrument -- counts how many times each view's `body` is evaluated.
-- **SwiftUI View Properties** instrument -- tracks `@State`, `@Binding`, and `@Observable` property changes that trigger view updates.
-- **Time Profiler** -- standard CPU profiler for identifying expensive `body` computations.
-- **Hangs** instrument -- flags main-thread hangs > 250ms.
-
-### Profiling Workflow
-
-1. **Build for Profiling.** Product > Profile (Cmd+I) in Xcode. This creates a Release build with profiling symbols.
-2. **Select the SwiftUI template.** Or create a custom template with SwiftUI + Time Profiler + Hangs.
-3. **Record the interaction.** Reproduce the exact scroll, navigation, or animation that is slow.
-4. **Inspect the SwiftUI lane.** Look for views with high body evaluation counts. A view evaluated hundreds of times during a single scroll is likely the bottleneck.
-5. **Cross-reference with Time Profiler.** If a view body is called often AND takes significant time per call, that is the priority fix.
-
-### View Body Evaluation Count
-
-In the SwiftUI instrument lane, each row represents a view type. Key signals:
-
-- **High count, low time per call:** Identity or state-invalidation problem (too many re-evaluations).
-- **Low count, high time per call:** Expensive computation inside `body` (formatting, sorting, image work).
-- **High count AND high time:** Both problems -- fix the expensive work first, then fix the invalidation.
-
-### Identifying Unnecessary Redraws
-
-Add `Self._printChanges()` in Debug builds to log exactly which property triggered a view update:
+Add `Self._printChanges()` in debug builds to log which property triggered a view update:
 
 ```swift
 var body: some View {
     #if DEBUG
-    let _ = Self._printChanges()  // prints: "MyView: @self, _count changed."
+    let _ = Self._printChanges()  // "MyView: @self, _count changed."
     #endif
     Text("Count: \(count)")
 }
 ```
 
-Remove `_printChanges()` before submitting to the App Store -- it is a debug-only API.
-
-### Time Profiler for Body Hotspots
-
-When Time Profiler shows significant time in a view's `body`:
-
-1. Filter the call tree by the view type name.
-2. Look for allocations (`NumberFormatter()`, `DateFormatter()`), collection operations (`.sorted()`, `.filter()`), or image decoding.
-3. Move expensive operations to `onChange`, `task`, or precomputed `@State`.
+See [references/optimizing-swiftui-performance-instruments.md](references/optimizing-swiftui-performance-instruments.md) for the full profiling workflow.
 
 ## Identity and Lifetime
 
@@ -299,6 +266,29 @@ func makeView(for item: Item) -> some View {
 ```
 
 `AnyView` also prevents SwiftUI from detecting which branch changed, causing full subtree replacement instead of targeted updates.
+
+### Ternary Modifiers Preserve Structural Identity
+
+`if`/`else` in a view builder creates `_ConditionalContent` — two separate view branches with distinct identities. When the condition changes, SwiftUI destroys one branch and creates the other, resetting all `@State`.
+
+For toggling **modifiers** on the same view, use a ternary expression instead:
+
+```swift
+// DON'T: if/else creates two separate Text views with different identities
+if isHighlighted {
+    Text(title).foregroundStyle(.yellow)
+} else {
+    Text(title).foregroundStyle(.primary)
+}
+
+// DO: ternary keeps one Text view, just changes the modifier value
+Text(title)
+    .foregroundStyle(isHighlighted ? .yellow : .primary)
+```
+
+This preserves the view's identity (and its state) across the condition change, and SwiftUI can animate the transition smoothly.
+
+Use `if`/`else` when the **view type itself** differs between branches. Use ternary when only a **property or modifier** changes.
 
 ### id() Modifier Impacts
 
