@@ -9,6 +9,7 @@
 - Custom Rotors
 - System Accessibility Preferences
 - UIKit Accessibility Patterns
+- AppKit Accessibility Patterns
 - Common Mistakes Checklist
 - Voice Control Patterns
 - Switch Control Patterns
@@ -133,6 +134,61 @@ UIAccessibility.post(notification: .layoutChanged, argument: targetView)
 UIAccessibility.post(notification: .screenChanged, argument: newScreenView)
 ```
 
+## AppKit Accessibility Patterns
+
+AppKit accessibility centers on `NSAccessibilityProtocol`. Use standard AppKit controls when possible, then override or add accessibility behavior only where the default metadata is wrong or incomplete.
+
+### Custom NSView with role, label, value, and action
+
+```swift
+final class FavoriteToggleView: NSView {
+    var isFavorite = false {
+        didSet {
+            NSAccessibility.post(element: self, notification: .valueChanged)
+        }
+    }
+
+    override func isAccessibilityElement() -> Bool { true }
+    override func accessibilityRole() -> NSAccessibility.Role? { .button }
+    override func accessibilityLabel() -> String? { "Favorite" }
+    override func accessibilityValue() -> Any? { isFavorite ? "On" : "Off" }
+
+    override func accessibilityPerformPress() -> Bool {
+        isFavorite.toggle()
+        return true
+    }
+}
+```
+
+### NSAccessibilityElement for non-view items
+
+Use `NSAccessibilityElement` when an accessible item has no backing `NSView`, such as a virtual data point in a chart or a drawn annotation.
+
+```swift
+let pointElement = NSAccessibilityElement.element(
+    withRole: .button,
+    frame: pointFrame,
+    label: "March revenue",
+    parent: chartView
+)
+```
+
+### AppKit announcements and notifications
+
+```swift
+NSAccessibility.post(element: saveStatusLabel, notification: .valueChanged)
+
+NSAccessibility.post(
+    element: self,
+    notification: .announcementRequested,
+    userInfo: [
+        .announcement: "Export complete"
+    ]
+)
+```
+
+Use `.announcementRequested` when assistive apps need to announce transient status. Use state-specific notifications such as `.valueChanged` when the accessible value changed.
+
 ## Common Mistakes Checklist
 
 - Direct trait assignment instead of `.accessibilityAddTraits`
@@ -251,7 +307,7 @@ HStack {
 
 ## Full Keyboard Access Patterns
 
-Full Keyboard Access (iOS 15+) uses Tab/Shift-Tab for navigation, Space/Enter for activation, and arrow keys for directional movement.
+Full Keyboard Access (iOS/iPadOS 13.4+) uses Tab/Shift-Tab for navigation, Space/Enter for activation, and arrow keys for directional movement.
 
 ### Making Custom Views Focusable (iOS 17+)
 
@@ -263,7 +319,7 @@ struct SelectableCard: View {
 
     var body: some View {
         RoundedRectangle(cornerRadius: 12)
-            .fill(isFocused ? Color.accentColor.opacity(0.1) : Color.clear)
+            .fill(isFocused ? Color.tint.opacity(0.1) : Color.clear)
             .overlay {
                 Text(title)
             }

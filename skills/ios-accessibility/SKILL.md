@@ -1,6 +1,6 @@
 ---
 name: ios-accessibility
-description: "Implement, review, or improve accessibility in iOS/macOS apps with SwiftUI and UIKit. Use when adding VoiceOver, Voice Control, Switch Control, or Full Keyboard Access support; when working with accessibility labels, hints, values, traits, or accessibilityInputLabels; when grouping or reordering accessibility elements; when managing focus with @AccessibilityFocusState or .focusable(); when supporting Dynamic Type with @ScaledMetric; when building custom rotors or accessibility actions; when writing automated accessibility tests with XCTest; when auditing a11y compliance; or when adapting UI for assistive technologies and system accessibility preferences."
+description: "Implements, reviews, or improves accessibility in iOS/macOS apps with SwiftUI and UIKit. Use when adding VoiceOver, Voice Control, Switch Control, or Full Keyboard Access support; when working with accessibility labels, hints, values, traits, or accessibilityInputLabels; when grouping or reordering accessibility elements; when managing focus with @AccessibilityFocusState or .focusable(); when supporting Dynamic Type with @ScaledMetric; when building custom rotors or accessibility actions; when writing automated accessibility tests with XCTest; when auditing a11y compliance; or when adapting UI for assistive technologies and system accessibility preferences."
 ---
 
 # iOS Accessibility — SwiftUI and UIKit
@@ -22,6 +22,7 @@ Every user-facing view must be usable with VoiceOver, Switch Control, Voice Cont
 - [Full Keyboard Access](#full-keyboard-access)
 - [Assistive Access (iOS 18+)](#assistive-access-ios-18)
 - [UIKit Accessibility Patterns](#uikit-accessibility-patterns)
+- [AppKit Accessibility Patterns](#appkit-accessibility-patterns)
 - [Accessibility Custom Content](#accessibility-custom-content)
 - [Testing Accessibility](#testing-accessibility)
 - [Common Mistakes](#common-mistakes)
@@ -56,6 +57,8 @@ See [references/a11y-patterns.md](references/a11y-patterns.md) for detailed Swif
 ## Focus Management
 
 Focus management is where most apps fail. When a sheet, alert, or popover is dismissed, VoiceOver focus MUST return to the element that triggered it.
+
+This section is about accessibility focus for assistive technologies. For keyboard focus, directional focus, `focusSection()`, scene-focused values, and `UIFocusGuide`, use the `focus-engine` skill.
 
 ### @AccessibilityFocusState (iOS 15+)
 
@@ -223,7 +226,7 @@ See [references/a11y-patterns.md](references/a11y-patterns.md) for custom action
 
 ## Full Keyboard Access
 
-Full Keyboard Access (iOS 15+) provides Tab/Shift-Tab navigation, arrow keys, Space/Enter activation, and Escape for dismissal. Standard SwiftUI controls are focusable by default.
+Full Keyboard Access (iOS/iPadOS 13.4+) provides Tab/Shift-Tab navigation, arrow keys, Space/Enter activation, and Escape for dismissal. Standard SwiftUI controls are focusable by default.
 
 - Tab order follows the accessibility element order.
 - Use `.focusable()` (iOS 17+) to make custom views participate in the focus system. The `focusable(_:interactions:)` variant controls whether the view supports `.activate`, `.edit`, or both.
@@ -277,9 +280,40 @@ customButton.accessibilityTraits.remove(.staticText)
 overlayView.accessibilityViewIsModal = true
 ```
 
+## AppKit Accessibility Patterns
+
+AppKit accessibility uses `NSAccessibilityProtocol` and related role-specific protocols to describe accessible elements. Standard AppKit controls already provide much of this behavior; customize labels, values, roles, and actions only when the defaults are insufficient.
+
+- Prefer standard AppKit controls first — they already expose accessibility metadata and notifications.
+- For custom `NSView` subclasses, adopt the appropriate role-specific accessibility behavior and return the correct role, label, value, and actions.
+- Use `NSAccessibilityElement` for accessible items that are not backed by their own `NSView`.
+- Post `NSAccessibility` notifications when state changes need to be announced to assistive apps.
+
+```swift
+final class FavoriteToggleView: NSView {
+    var isFavorite = false {
+        didSet {
+            NSAccessibility.post(element: self, notification: .valueChanged)
+        }
+    }
+
+    override func isAccessibilityElement() -> Bool { true }
+    override func accessibilityRole() -> NSAccessibility.Role? { .button }
+    override func accessibilityLabel() -> String? { "Favorite" }
+    override func accessibilityValue() -> Any? { isFavorite ? "On" : "Off" }
+
+    override func accessibilityPerformPress() -> Bool {
+        isFavorite.toggle()
+        return true
+    }
+}
+```
+
+See [references/a11y-patterns.md](references/a11y-patterns.md) for AppKit examples including `NSAccessibilityElement` and announcement notifications.
+
 ## Accessibility Custom Content
 
-See [references/a11y-patterns.md](references/a11y-patterns.md) for UIKit accessibility patterns and custom content examples.
+See [references/a11y-patterns.md](references/a11y-patterns.md) for UIKit and AppKit accessibility patterns and custom content examples.
 
 ```swift
 ProductRow(product: product)
@@ -349,7 +383,7 @@ func testSheetDismissReturnsFocus() throws {
 
 ## Common Mistakes
 
-1. **Direct trait assignment**: `.accessibilityTraits(.isButton)` overwrites all existing traits. Use `.accessibilityAddTraits(.isButton)`.
+1. **Direct trait assignment**: UIKit trait mutation or incorrect SwiftUI trait APIs can overwrite existing behavior. In SwiftUI, use `.accessibilityAddTraits(.isButton)`.
 2. **Missing focus restoration**: Dismissing sheets without returning VoiceOver focus to the trigger element.
 3. **Ungrouped list rows**: Multiple text elements per row create excessive swipe stops. Use `.accessibilityElement(children: .combine)`.
 4. **Redundant trait in labels**: `.accessibilityLabel("Settings button")` reads as "Settings button, button." Omit the type.
@@ -388,5 +422,7 @@ For every user-facing view, verify:
 
 ## References
 
-- Detailed patterns: [references/a11y-patterns.md](references/a11y-patterns.md)
+- [references/a11y-patterns.md](references/a11y-patterns.md) — SwiftUI and UIKit modifier examples, grouping, custom actions, rotors, Dynamic Type
+- [references/nutrition-labels.md](references/nutrition-labels.md) — App Store Accessibility Nutrition Labels: all 9 categories with pass/fail criteria
+- [references/media-accessibility.md](references/media-accessibility.md) — Captions, audio descriptions, AVMediaCharacteristic, SDH
 
