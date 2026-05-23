@@ -122,7 +122,7 @@ let defaultRoom = home.roomForEntireHome()
 
 ### Discovering and Adding Accessories
 
-Use HomeKit and MatterSupport for home-model work: homes, rooms, `HMAccessory` services and characteristics, action sets, triggers and automations, HomeKit accessory setup UI, and Matter commissioning. If the same request asks about lower-level Bluetooth or Wi-Fi accessory discovery or authorization, name AccessorySetupKit as the boundary for discovery descriptors, picker authorization, `ASAccessorySession` events, and migration. After AccessorySetupKit setup, ongoing transport may use CoreBluetooth or NetworkExtension; that handoff is not HomeKit automation logic.
+Use HomeKit and MatterSupport for home-model work: homes, rooms, `HMAccessory` services and characteristics, action sets, triggers and automations, HomeKit accessory setup UI, and Matter commissioning. If the same request asks about lower-level Bluetooth or Wi-Fi accessory discovery or authorization, name AccessorySetupKit as the boundary for discovery descriptors, picker authorization, `ASAccessorySession` events, and migration. After AccessorySetupKit setup, explicitly name both post-setup handoff targets: CoreBluetooth/GATT for Bluetooth accessories and NetworkExtension for Wi-Fi accessory network flows; neither handoff is HomeKit automation logic.
 
 ```swift
 // System UI for accessory discovery
