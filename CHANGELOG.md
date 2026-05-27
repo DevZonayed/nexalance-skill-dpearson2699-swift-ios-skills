@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Skill updates
+
+- `push-notifications` — Correct APNs registration vs notification authorization guidance, avoid local device-token caching, add background push headers/throttling, fix rich-notification extension setup, and add local/root eval coverage.
+
 ## v3.5.0
 
 ### Repository
