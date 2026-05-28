@@ -174,7 +174,7 @@ $skill-installer install https://github.com/dpearson2699/swift-ios-skills/tree/m
 | [swift-api-design-guidelines](skills/swift-api-design-guidelines/) | Swift API Design Guidelines -- argument labels, mutating/nonmutating pairs, documentation comments, naming conventions |
 | [swift-architecture](skills/swift-architecture/) | Architecture patterns: MV (@Observable), MVVM, MVI, TCA, Clean Architecture, Coordinator, decision framework |
 | [swift-codable](skills/swift-codable/) | Swift Codable, JSONDecoder, JSONEncoder, CodingKeys, custom decoding, nested JSON |
-| [swift-charts](skills/swift-charts/) | Bar, line, area, pie, donut charts, scrolling, selection, annotations |
+| [swift-charts](skills/swift-charts/) | Bar, line, area, pie, donut, and 3D charts, scrolling, selection, annotations |
 | [swift-concurrency](skills/swift-concurrency/) | Swift 6.2 concurrency, Sendable, actors, structured concurrency, data-race safety |
 | [swift-formatstyle](skills/swift-formatstyle/) | FormatStyle protocol, number/currency/date/duration/measurement formatting, custom styles |
 | [swift-language](skills/swift-language/) | Swift 6.3 features, macros, result builders, property wrappers |
