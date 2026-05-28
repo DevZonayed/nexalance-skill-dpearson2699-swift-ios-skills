@@ -330,9 +330,9 @@ struct TripList {
 }
 ```
 
-**Use TCA when:** Large team needs consistent patterns, exhaustive test
-coverage is a priority, features compose from smaller features, you need
-structured dependency injection across the app.
+**Use TCA when:** You need deterministic state transitions for complex state
+flows, structured side-effect sequencing, feature composition, strong reducer
+testing, or app-wide dependency injection.
 
 ## Clean Architecture
 
