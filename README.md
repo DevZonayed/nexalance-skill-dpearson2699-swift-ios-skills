@@ -177,7 +177,7 @@ $skill-installer install https://github.com/dpearson2699/swift-ios-skills/tree/m
 | [swift-charts](skills/swift-charts/) | Bar, line, area, pie, donut, and 3D charts, scrolling, selection, annotations |
 | [swift-concurrency](skills/swift-concurrency/) | Swift 6.2 concurrency, Sendable, actors, structured concurrency, data-race safety |
 | [swift-formatstyle](skills/swift-formatstyle/) | FormatStyle protocol, number/currency/date/duration/measurement formatting, custom styles |
-| [swift-language](skills/swift-language/) | Swift 6.3 features, macros, result builders, property wrappers |
+| [swift-language](skills/swift-language/) | Swift 6.3 language idioms, result builders, property wrappers, typed throws |
 | [swift-testing](skills/swift-testing/) | Swift Testing framework, @Test, @Suite, #expect, parameterized tests, mocking |
 | [core-data](skills/core-data/) | Core Data persistence, NSPersistentContainer, NSFetchedResultsController, batch operations, staged migration |
 | [swiftdata](skills/swiftdata/) | @Model, @Query, #Predicate, ModelContainer, migrations, CloudKit sync, @ModelActor |

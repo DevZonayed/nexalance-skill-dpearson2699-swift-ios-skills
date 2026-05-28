@@ -6,6 +6,7 @@
 
 - `push-notifications` — Correct APNs registration vs notification authorization guidance, avoid local device-token caching, add background push headers/throttling, fix rich-notification extension setup, and add local/root eval coverage.
 - `swift-charts` — Add iOS 26 `Chart3D`/`SurfacePlot` coverage, correct `chartAngleSelection` category mapping guidance, and add local/root eval coverage.
+- `swift-language` — Correct `Never`, opaque parameter, `@c`, and RegexBuilder reference guidance, align the README catalog with the skill scope, and add local/root eval coverage.
 - `swift-api-design-guidelines` — Tighten mutating/nonmutating pair guidance around direct-object `-ing` forms and add local/root eval coverage for API naming, documentation comments, and sibling-boundary routing.
 - `speech-recognition` — Correct SpeechAnalyzer/SpeechTranscriber iOS 26 guidance, remove unsupported preset usage, add SpeechAnalyzer progressive-disclosure reference material, and add local eval coverage.
 
