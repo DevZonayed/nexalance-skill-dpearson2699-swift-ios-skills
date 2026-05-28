@@ -20,3 +20,6 @@ skills/*-workspace/
 # Keep only source eval definitions beside skills; generated scenario staging stays local.
 skills/*/evals/*
 !skills/*/evals/evals.json
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
